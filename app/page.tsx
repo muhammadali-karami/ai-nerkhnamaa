@@ -21,7 +21,14 @@ const fallback: PriceResponse = { gold: { averagePrice: null, sources: [
 ] }, updatedAt: "", refreshAfterSeconds: REFRESH_SECONDS };
 function amount(value: number | null, unit: string) { return value === null || !Number.isFinite(value) ? "—" : `${new Intl.NumberFormat("fa-IR").format(Math.round(value))} ${unit}`; }
 function timestamp(value: string | null) { const date = value ? new Date(value) : null; return !date || Number.isNaN(date.getTime()) ? "نامشخص" : new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date); }
-function withPrevious(next: PriceResponse, current: PriceResponse | null): PriceResponse { const previous = new Map([...(current?.gold.sources ?? []), ...(current?.dollar.sources ?? [])].map((source) => [source.id, source.price])); const addPrevious = (market: Market) => ({ ...market, sources: market.sources.map((source) => ({ ...source, previousPrice: previous.get(source.id) ?? null })) }); return { ...next, gold: addPrevious(next.gold), dollar: addPrevious(next.dollar) }; }
+function averagePrice(sources: PriceSource[]) { const prices = sources.flatMap((source) => source.price === null ? [] : [source.price]); return prices.length ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length) : null; }
+function updateSource(current: PriceResponse | null, marketName: "gold" | "dollar", nextSource: PriceSource, updatedAt: string): PriceResponse {
+  const base = current ?? fallback;
+  const currentMarket = base[marketName];
+  const previous = currentMarket.sources.find((source) => source.id === nextSource.id)?.price ?? null;
+  const sources = currentMarket.sources.map((source) => source.id === nextSource.id ? { ...nextSource, previousPrice: previous } : source);
+  return { ...base, [marketName]: { sources, averagePrice: averagePrice(sources) }, updatedAt };
+}
 function SourceLogo({ source }: { source: PriceSource }) { const [failed, setFailed] = useState(false); const domain = source.domain ?? new URL(source.url).hostname; return <span className="source-logo" aria-hidden="true">{!failed && <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`} alt="" onError={() => setFailed(true)} />}{failed && <b>{source.name.trim().slice(0, 1)}</b>}</span>; }
 function MarketPanel({ market, title, titleEnglish, unit, tone }: { market: Market; title: string; titleEnglish: string; unit: string; tone: "gold" | "dollar" }) {
   const liveCount = market.sources.filter((source) => source.status === "live" && source.price !== null).length;
@@ -30,7 +37,24 @@ function MarketPanel({ market, title, titleEnglish, unit, tone }: { market: Mark
 }
 export default function Home() {
   const [data, setData] = useState<PriceResponse | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(false); const [remaining, setRemaining] = useState(REFRESH_SECONDS); const [theme, setTheme] = useState<"light" | "dark">("light");
-  const fetchPrices = useCallback(async () => { try { const response = await fetch("/api/prices", { cache: "no-store" }); if (!response.ok) throw new Error("Price service unavailable"); const nextData = await response.json() as PriceResponse; setData((current) => withPrevious(nextData, current)); setError(false); setRemaining(REFRESH_SECONDS); } catch { setError(true); } finally { setLoading(false); } }, []);
+  const fetchPrices = useCallback(async () => {
+    try {
+      const response = await fetch("/api/prices", { cache: "no-store" });
+      if (!response.ok || !response.body) throw new Error("Price service unavailable");
+      const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const messages = buffer.split("\n\n"); buffer = messages.pop() ?? "";
+        for (const message of messages) {
+          const event = message.match(/^event: (.+)$/m)?.[1]; const json = message.match(/^data: (.+)$/m)?.[1]; if (!event || !json) continue;
+          const payload = JSON.parse(json) as { market?: "gold" | "dollar"; source?: PriceSource; updatedAt: string };
+          if (event === "source" && payload.market && payload.source) { setData((current) => updateSource(current, payload.market!, payload.source!, payload.updatedAt)); setError(false); }
+          if (event === "complete") { setRemaining(REFRESH_SECONDS); }
+        }
+      }
+    } catch { setError(true); } finally { setLoading(false); }
+  }, []);
   useEffect(() => { const saved = window.localStorage.getItem("talnama-theme"); if (saved === "dark" || saved === "light") setTheme(saved); else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark"); }, []);
   useEffect(() => { window.localStorage.setItem("talnama-theme", theme); }, [theme]);
   useEffect(() => { void fetchPrices(); const interval = window.setInterval(() => void fetchPrices(), REFRESH_SECONDS * 1000); return () => window.clearInterval(interval); }, [fetchPrices]);

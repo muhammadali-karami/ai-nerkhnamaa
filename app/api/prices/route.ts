@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 type Source = { id: string; name: string; url: string; domain: string; note: string; price: number | null; status: "live" | "unavailable"; updatedAt: string | null };
 const now = () => new Date().toISOString();
 
@@ -53,8 +51,24 @@ async function raastin(): Promise<Source> {
   const base = { id: "raastin", name: "راستین", url: "https://raastin.com/", domain: "raastin.com", note: "تتر · معادل دلار · تومان" };
   try { const data = await requestJson("https://api.raastin.com/api/v1/market/symbols/USDTIRT") as { price?: string }; const price = Number(data.price); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
 }
-function market(sources: Source[]) { const prices = sources.flatMap((source) => source.price === null ? [] : [source.price]); return { averagePrice: prices.length ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length) : null, sources }; }
 export async function GET() {
-  const [goldSources, dollarSources] = await Promise.all([Promise.all([talasea(), daric(), milli(), tgju(), iranjib()]), Promise.all([bitpin(), tabdeal(), nobitex(), wallex(), raastin()])]);
-  return NextResponse.json({ gold: market(goldSources), dollar: market(dollarSources), updatedAt: now(), refreshAfterSeconds: 20 }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  const encoder = new TextEncoder();
+  const sources = [
+    ...[talasea, daric, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
+    ...[bitpin, tabdeal, nobitex, wallex, raastin].map((load) => ({ market: "dollar" as const, load })),
+  ];
+  const stream = new ReadableStream({
+    start(controller) {
+      const send = (event: string, payload: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+      send("ready", { updatedAt: now(), refreshAfterSeconds: 20 });
+      const pending = sources.map(({ market: marketName, load }) => load()
+        .then((source) => send("source", { market: marketName, source, updatedAt: now() }))
+        .catch(() => undefined));
+      void Promise.allSettled(pending).then(() => {
+        send("complete", { updatedAt: now(), refreshAfterSeconds: 20 });
+        controller.close();
+      });
+    },
+  });
+  return new Response(stream, { headers: { "Cache-Control": "no-store, max-age=0", "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive" } });
 }
