@@ -11,8 +11,8 @@ async function requestJson(url: string) {
 function unavailable(source: Omit<Source, "price" | "status" | "updatedAt">): Source { return { ...source, price: null, status: "unavailable", updatedAt: null }; }
 
 async function daric(): Promise<Source> {
-  const base = { id: "daric", name: "داریک", url: "https://daric.gold/", domain: "daric.gold", note: "طلای ۱۸ عیار · تومان/گرم" };
-  try { const data = await requestJson("https://apisc.daric.gold/loan/api/v1/User/Collateral/GetGoldlPrice") as { Data?: { BestBuyPrice?: string; BestSellPrice?: string }; IsSuccess?: boolean }; const price = (Number(data.Data?.BestBuyPrice) + Number(data.Data?.BestSellPrice)) / 2; if (!data.IsSuccess || !Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
+  const base = { id: "daric", name: "داریک", url: "https://market.daric.gold/trade/GOLD18/TMN", domain: "market.daric.gold", note: "خرید GOLD18/TMN · تومان/گرم" };
+  try { const data = await requestJson("https://apie.daric.gold/public/general/topprice/GOLD18TMN") as { bestBuy?: { price?: number } }; const price = Number(data.bestBuy?.price); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
 }
 async function milli(): Promise<Source> {
   const base = { id: "milli", name: "میلی", url: "https://milli.gold/", domain: "milli.gold", note: "طلای ۱۸ عیار · تومان/گرم" };

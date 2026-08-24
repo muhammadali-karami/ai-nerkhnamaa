@@ -8,7 +8,7 @@ async function render(path = "/") {
   return worker.fetch(new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }), { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } }, { waitUntil() {}, passThroughOnException() {} });
 }
 
-test("server-renders the Talnama dashboard and sharing metadata", async () => {
+test("server-renders the Nerkhnama dashboard and sharing metadata", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   const html = await response.text();
