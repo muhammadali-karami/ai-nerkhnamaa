@@ -1,5 +1,8 @@
 import { headers } from "next/headers";
+import { Vazirmatn } from "next/font/google";
 import "./globals.css";
+
+const vazirmatn = Vazirmatn({ subsets: ["arabic"], variable: "--font-vazirmatn" });
 
 export default async function RootLayout({
   children,
@@ -10,8 +13,8 @@ export default async function RootLayout({
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const image = `${protocol}://${host}/og.png`;
-  const title = "طلا‌نما | قیمت تجمیعی طلا";
-  const description = "پایش قیمت تجمیعی طلای ۱۸ عیار از منابع منتخب.";
+  const title = "طلا‌نما | قیمت میانگین طلا و دلار";
+  const description = "پایش قیمت میانگین طلای ۱۸ عیار و دلار از منابع منتخب.";
 
   return (
     <html lang="fa" dir="rtl">
@@ -27,7 +30,7 @@ export default async function RootLayout({
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={image} />
       </head>
-      <body>{children}</body>
+      <body className={vazirmatn.variable}>{children}</body>
     </html>
   );
 }
