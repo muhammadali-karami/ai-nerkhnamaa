@@ -25,6 +25,6 @@ test("price API is present in the production worker", async () => {
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.refreshAfterSeconds, 20);
-  assert.equal(payload.gold.sources.length, 3);
-  assert.equal(payload.dollar.sources.length, 3);
+  assert.equal(payload.gold.sources.length, 5);
+  assert.equal(payload.dollar.sources.length, 5);
 });
