@@ -49,13 +49,12 @@ async function talasea(): Promise<Source> {
 }
 function parseRial(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")); }
 function tgjuCurrentRate(html: string) {
-  const labelledRate = html.match(/نرخ فعلی[\s\S]{0,400}?data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
+  const labelledRate = html.match(/نرخ فعلی[\s\S]{0,600}?data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
   const tableRate = html.match(/نرخ فعلی<\/td>\s*<td[^>]*>\s*([^<\s]+)/);
-  const dataRate = html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
-  return labelledRate?.[1] ?? tableRate?.[1] ?? dataRate?.[1] ?? "";
+  return labelledRate?.[1] ?? tableRate?.[1] ?? "";
 }
 async function tgju(): Promise<Source> {
-  const base = { id: "tgju", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "طلای ۱۸ عیار · تومان/گرم" };
+  const base = { id: "tgju", name: "طلاجو", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "نرخ فعلی طلای ۱۸ عیار · تومان/گرم" };
   try {
     // TGJU's server can take longer than the other sources; its displayed current rate is in rials.
     const html = await requestText(base.url, 35_000);
