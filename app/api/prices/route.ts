@@ -53,6 +53,7 @@ async function raastin(): Promise<Source> {
 }
 export async function GET() {
   const encoder = new TextEncoder();
+  const refreshStartedAt = now();
   const sources = [
     ...[talasea, daric, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
     ...[bitpin, tabdeal, nobitex, wallex, raastin].map((load) => ({ market: "dollar" as const, load })),
@@ -60,12 +61,12 @@ export async function GET() {
   const stream = new ReadableStream({
     start(controller) {
       const send = (event: string, payload: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
-      send("ready", { updatedAt: now(), refreshAfterSeconds: 20 });
+      send("ready", { updatedAt: refreshStartedAt, refreshAfterSeconds: 20 });
       const pending = sources.map(({ market: marketName, load }) => load()
-        .then((source) => send("source", { market: marketName, source, updatedAt: now() }))
+        .then((source) => send("source", { market: marketName, source, updatedAt: refreshStartedAt }))
         .catch(() => undefined));
       void Promise.allSettled(pending).then(() => {
-        send("complete", { updatedAt: now(), refreshAfterSeconds: 20 });
+        send("complete", { updatedAt: refreshStartedAt, refreshAfterSeconds: 20 });
         controller.close();
       });
     },
