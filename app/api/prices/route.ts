@@ -49,9 +49,8 @@ async function talasea(): Promise<Source> {
 }
 function parseRial(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")); }
 function tgjuCurrentRate(html: string) {
-  const labelledRate = html.match(/نرخ فعلی[\s\S]{0,600}?data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
-  const tableRate = html.match(/نرخ فعلی<\/td>\s*<td[^>]*>\s*([^<\s]+)/);
-  return labelledRate?.[1] ?? tableRate?.[1] ?? "";
+  const table = html.match(/<tbody[^>]*class="[^"]*table-padding-lg[^"]*"[^>]*>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
+  return table.match(/نرخ فعلی<\/td>\s*<td[^>]*>\s*([^<\s]+)/)?.[1] ?? "";
 }
 async function tgju(): Promise<Source> {
   const base = { id: "tgju", name: "طلاجو", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "نرخ فعلی طلای ۱۸ عیار · تومان/گرم" };
