@@ -52,7 +52,7 @@ function tgjuCurrentRate(html: string) {
   return html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/)?.[1] ?? "";
 }
 async function tgju(): Promise<Source> {
-  const base = { id: "tgju", name: "طلاجو", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "نرخ فعلی طلای ۱۸ عیار · تومان/گرم" };
+  const base = { id: "tgju", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "نرخ فعلی طلای ۱۸ عیار · تومان/گرم" };
   try {
     // TGJU's server can take longer than the other sources; its displayed current rate is in rials.
     const html = await requestText(base.url, 35_000);
@@ -62,7 +62,7 @@ async function tgju(): Promise<Source> {
   } catch { return unavailable(base); }
 }
 async function tgjuDollar(): Promise<Source> {
-  const base = { id: "tgju-dollar", name: "طلاجو", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "نرخ فعلی دلار آمریکا · تومان" };
+  const base = { id: "tgju-dollar", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "نرخ فعلی دلار آمریکا · تومان" };
   try {
     const html = await requestText(base.url, 35_000);
     const price = parseRial(tgjuCurrentRate(html)) / 10;
