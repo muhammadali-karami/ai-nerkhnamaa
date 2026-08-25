@@ -14,14 +14,31 @@ async function requestText(url: string, timeoutMs = 8_000) {
 function unavailable(source: Omit<Source, "price" | "status" | "updatedAt">): Source { return { ...source, price: null, status: "unavailable", updatedAt: null }; }
 
 async function daric(): Promise<Source> {
-  const base = { id: "daric", name: "داریک", url: "https://market.daric.gold/trade/GOLD18/TMN", domain: "market.daric.gold", note: "خرید GOLD18/TMN · تومان/گرم" };
-  try { const data = await requestJson("https://apie.daric.gold/public/general/topprice/GOLD18TMN") as { bestBuy?: { price?: number } }; const price = Number(data.bestBuy?.price); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
+  const base = { id: "daric", name: "داریک", url: "https://market.daric.gold/trade/GOLD18/TMN", domain: "market.daric.gold", note: "آخرین قیمت GOLD18/TMN · تومان/گرم" };
+  try {
+    const topPrice = await requestJson("https://apie.daric.gold/public/general/topprice/GOLD18TMN") as { bestBuy?: { pairId?: string } };
+    if (!topPrice.bestBuy?.pairId) throw new Error();
+    const fills = await requestJson(`https://apie.daric.gold/public/general/${topPrice.bestBuy.pairId}/fills`) as { lastFillOrders?: Array<{ price?: number; createDateTime?: string }> };
+    const latestTrade = fills.lastFillOrders?.[0];
+    const price = Number(latestTrade?.price);
+    if (!Number.isFinite(price) || price <= 0) throw new Error();
+    return { ...base, price: Math.round(price), status: "live", updatedAt: latestTrade?.createDateTime ?? now() };
+  } catch { return unavailable(base); }
 }
 async function milli(): Promise<Source> {
   const base = { id: "milli", name: "میلی", url: "https://milli.gold/", domain: "milli.gold", note: "طلای ۱۸ عیار · تومان/گرم" };
   try { const data = await requestJson("https://milli.gold/api/v1/public/milli-price/external") as { data?: { price18?: number; date?: string } }; const raw = Number(data.data?.price18); if (!Number.isFinite(raw) || raw <= 0) throw new Error(); return { ...base, price: Math.round(raw * 100), status: "live", updatedAt: data.data?.date ?? now() }; } catch { return unavailable(base); }
 }
-async function talasea(): Promise<Source> { return unavailable({ id: "talasea", name: "طلاسی", url: "https://talasea.ir/", domain: "talasea.ir", note: "مسیر دادهٔ عمومی پاسخ معتبر نمی‌دهد" }); }
+async function talasea(): Promise<Source> {
+  const base = { id: "talasea", name: "طلاسی", url: "https://talasea.ir/", domain: "talasea.ir", note: "قیمت لحظه‌ای طلای ۱۸ عیار · تومان/گرم" };
+  try {
+    const data = await requestJson("https://api.talasea.ir/api/market/getGoldPrice") as { price?: string | number };
+    // Talasea returns the gold price per milligram; its page renders this value per gram.
+    const price = Number(data.price) * 1_000;
+    if (!Number.isFinite(price) || price <= 0) throw new Error();
+    return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
+  } catch { return unavailable(base); }
+}
 function parseRial(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")); }
 function tgjuCurrentRate(html: string) {
   const labelledRate = html.match(/نرخ فعلی[\s\S]{0,400}?data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
@@ -55,11 +72,12 @@ async function nobitex(): Promise<Source> {
   const base = { id: "nobitex", name: "نوبیتکس", url: "https://nobitex.ir/", domain: "nobitex.ir", note: "تتر · معادل دلار · تومان" };
   try { const data = await requestJson("https://apiv2.nobitex.ir/market/stats") as { stats?: Record<string, { latest?: string }> }; const price = Number(data.stats?.["usdt-rls"]?.latest) / 10; if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
 }
-async function wallex(): Promise<Source> {
-  const base = { id: "wallex", name: "والکس", url: "https://wallex.ir/", domain: "wallex.ir", note: "تتر · معادل دلار · تومان" };
+async function bit24(): Promise<Source> {
+  const base = { id: "bit24", name: "بیت۲۴", url: "https://bit24.cash/", domain: "bit24.cash", note: "تتر · معادل دلار · تومان" };
   try {
-    const data = await requestJson("https://api.wallex.ir/v1/markets", 20_000) as { result?: { symbols?: Record<string, { stats?: { lastPrice?: string } }> } };
-    const price = Number(data.result?.symbols?.USDTTMN?.stats?.lastPrice);
+    const html = await requestText(base.url, 20_000);
+    const usdtCard = html.match(/href="https:\/\/bit24\.cash\/coins\/usdt\/"[\s\S]{0,1200}?([0-9۰-۹,]+)\s*IRT/);
+    const price = parseRial(usdtCard?.[1] ?? "");
     if (!Number.isFinite(price) || price <= 0) throw new Error();
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
@@ -72,7 +90,7 @@ export async function GET() {
   const encoder = new TextEncoder();
   const sources = [
     ...[talasea, daric, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
-    ...[bitpin, tabdeal, nobitex, wallex, raastin].map((load) => ({ market: "dollar" as const, load })),
+    ...[bitpin, tabdeal, nobitex, bit24, raastin].map((load) => ({ market: "dollar" as const, load })),
   ];
   const stream = new ReadableStream({
     start(controller) {

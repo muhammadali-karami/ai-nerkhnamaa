@@ -16,7 +16,7 @@ const fallback: PriceResponse = { gold: { averagePrice: null, sources: [
   { id: "bitpin", name: "بیت‌پین", price: null, url: "https://bitpin.ir/", status: "unavailable", updatedAt: null, domain: "bitpin.ir" },
   { id: "tabdeal", name: "تبدیل", price: null, url: "https://tabdeal.org/live/currency", status: "unavailable", updatedAt: null, domain: "tabdeal.org" },
   { id: "nobitex", name: "نوبیتکس", price: null, url: "https://nobitex.ir/", status: "unavailable", updatedAt: null, domain: "nobitex.ir" },
-  { id: "wallex", name: "والکس", price: null, url: "https://wallex.ir/", status: "unavailable", updatedAt: null, domain: "wallex.ir" },
+  { id: "bit24", name: "بیت۲۴", price: null, url: "https://bit24.cash/", status: "unavailable", updatedAt: null, domain: "bit24.cash" },
   { id: "raastin", name: "راستین", price: null, url: "https://raastin.com/", status: "unavailable", updatedAt: null, domain: "raastin.com" },
 ] }, updatedAt: "", refreshAfterSeconds: REFRESH_SECONDS };
 function amount(value: number | null, unit: string) { return value === null || !Number.isFinite(value) ? "—" : `${new Intl.NumberFormat("fa-IR").format(Math.round(value))} ${unit}`; }
