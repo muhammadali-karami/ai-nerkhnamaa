@@ -11,18 +11,26 @@ async function requestText(url: string, timeoutMs = 8_000) {
   if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
   return response.text();
 }
+async function requestMelliJson(url: string) {
+  const headers = { Accept: "application/json", "User-Agent": "Mozilla/5.0 (compatible; Nerkhnama/1.0)" };
+  const initial = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+  const cookie = initial.headers.get("set-cookie")?.split(/,(?=\s*[^;,\s]+=)/).map((item) => item.split(";")[0]).join("; ");
+  const response = initial.status >= 300 && initial.status < 400 && cookie
+    ? await fetch(url, { headers: { ...headers, Cookie: cookie }, signal: AbortSignal.timeout(15_000) })
+    : initial;
+  if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
+  return response.json() as Promise<unknown>;
+}
 function unavailable(source: Omit<Source, "price" | "status" | "updatedAt">): Source { return { ...source, price: null, status: "unavailable", updatedAt: null }; }
 
-async function daric(): Promise<Source> {
-  const base = { id: "daric", name: "داریک", url: "https://market.daric.gold/trade/GOLD18/TMN", domain: "market.daric.gold", note: "آخرین قیمت GOLD18/TMN · تومان/گرم" };
+async function melligold(): Promise<Source> {
+  const base = { id: "melligold", name: "ملی‌گلد", url: "https://melligold.com/", domain: "melligold.com", note: "قیمت لحظه‌ای طلای ۱۸ عیار · تومان/گرم" };
   try {
-    const topPrice = await requestJson("https://apie.daric.gold/public/general/topprice/GOLD18TMN") as { bestBuy?: { pairId?: string } };
-    if (!topPrice.bestBuy?.pairId) throw new Error();
-    const fills = await requestJson(`https://apie.daric.gold/public/general/${topPrice.bestBuy.pairId}/fills`) as { lastFillOrders?: Array<{ price?: number; createDateTime?: string }> };
-    const latestTrade = fills.lastFillOrders?.[0];
-    const price = Number(latestTrade?.price);
+    const data = await requestMelliJson("https://melligold.com/api/v1/exchange/buy-sell-price/?symbol=XAU18&format=json") as { data?: { price_sell?: number; timestamp?: number } };
+    const price = Number(data.data?.price_sell);
     if (!Number.isFinite(price) || price <= 0) throw new Error();
-    return { ...base, price: Math.round(price), status: "live", updatedAt: latestTrade?.createDateTime ?? now() };
+    const updatedAt = data.data?.timestamp ? new Date(data.data.timestamp * 1_000).toISOString() : now();
+    return { ...base, price: Math.round(price), status: "live", updatedAt };
   } catch { return unavailable(base); }
 }
 async function milli(): Promise<Source> {
@@ -56,6 +64,15 @@ async function tgju(): Promise<Source> {
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
 }
+async function tgjuDollar(): Promise<Source> {
+  const base = { id: "tgju-dollar", name: "طلاجو", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "نرخ فعلی دلار آمریکا · تومان" };
+  try {
+    const html = await requestText(base.url, 35_000);
+    const price = parseRial(tgjuCurrentRate(html)) / 10;
+    if (!Number.isFinite(price) || price <= 0) throw new Error();
+    return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
+  } catch { return unavailable(base); }
+}
 async function iranjib(): Promise<Source> {
   const base = { id: "iranjib", name: "ایران‌جیب", url: "https://www.iranjib.ir/showgroup/23/gold/", domain: "iranjib.ir", note: "طلای ۱۸ عیار · تومان/گرم" };
   try { const html = await requestText(base.url); const match = html.match(/هر گرم طلای [^<]*<\/a><\/td>\s*<td[^>]*>\s*<span class="lastprice">([^<]+)/); const price = parseRial(match?.[1] ?? "") / 10; if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
@@ -82,15 +99,11 @@ async function bit24(): Promise<Source> {
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
 }
-async function raastin(): Promise<Source> {
-  const base = { id: "raastin", name: "راستین", url: "https://raastin.com/", domain: "raastin.com", note: "تتر · معادل دلار · تومان" };
-  try { const data = await requestJson("https://api.raastin.com/api/v1/market/symbols/USDTIRT") as { price?: string }; const price = Number(data.price); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
-}
 export async function GET() {
   const encoder = new TextEncoder();
   const sources = [
-    ...[talasea, daric, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
-    ...[bitpin, tabdeal, nobitex, bit24, raastin].map((load) => ({ market: "dollar" as const, load })),
+    ...[talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
+    ...[bitpin, tabdeal, nobitex, bit24, tgjuDollar].map((load) => ({ market: "dollar" as const, load })),
   ];
   const stream = new ReadableStream({
     start(controller) {
