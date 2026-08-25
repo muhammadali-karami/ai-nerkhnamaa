@@ -1,13 +1,13 @@
 type Source = { id: string; name: string; url: string; domain: string; note: string; price: number | null; status: "live" | "unavailable"; updatedAt: string | null };
 const now = () => new Date().toISOString();
 
-async function requestJson(url: string) {
-  const response = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "Talnama/1.1" }, signal: AbortSignal.timeout(8_000) });
+async function requestJson(url: string, timeoutMs = 8_000) {
+  const response = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "Talnama/1.1" }, signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
   return response.json() as Promise<unknown>;
 }
-async function requestText(url: string) {
-  const response = await fetch(url, { headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible; Nerkhnama/1.0)" }, signal: AbortSignal.timeout(8_000) });
+async function requestText(url: string, timeoutMs = 8_000) {
+  const response = await fetch(url, { headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible; Nerkhnama/1.0)" }, signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) throw new Error(`Upstream returned ${response.status}`);
   return response.text();
 }
@@ -23,9 +23,21 @@ async function milli(): Promise<Source> {
 }
 async function talasea(): Promise<Source> { return unavailable({ id: "talasea", name: "طلاسی", url: "https://talasea.ir/", domain: "talasea.ir", note: "مسیر دادهٔ عمومی پاسخ معتبر نمی‌دهد" }); }
 function parseRial(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")); }
+function tgjuCurrentRate(html: string) {
+  const labelledRate = html.match(/نرخ فعلی[\s\S]{0,400}?data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
+  const tableRate = html.match(/نرخ فعلی<\/td>\s*<td[^>]*>\s*([^<\s]+)/);
+  const dataRate = html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/);
+  return labelledRate?.[1] ?? tableRate?.[1] ?? dataRate?.[1] ?? "";
+}
 async function tgju(): Promise<Source> {
   const base = { id: "tgju", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/geram18", domain: "tgju.org", note: "طلای ۱۸ عیار · تومان/گرم" };
-  try { const html = await requestText(base.url); const match = html.match(/data-col="info\.last_trade\.PDrCotVal">\s*([0-9,]+)/); const price = parseRial(match?.[1] ?? "") / 10; if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
+  try {
+    // TGJU's server can take longer than the other sources; its displayed current rate is in rials.
+    const html = await requestText(base.url, 35_000);
+    const price = parseRial(tgjuCurrentRate(html)) / 10;
+    if (!Number.isFinite(price) || price <= 0) throw new Error();
+    return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
+  } catch { return unavailable(base); }
 }
 async function iranjib(): Promise<Source> {
   const base = { id: "iranjib", name: "ایران‌جیب", url: "https://www.iranjib.ir/showgroup/23/gold/", domain: "iranjib.ir", note: "طلای ۱۸ عیار · تومان/گرم" };
@@ -45,7 +57,12 @@ async function nobitex(): Promise<Source> {
 }
 async function wallex(): Promise<Source> {
   const base = { id: "wallex", name: "والکس", url: "https://wallex.ir/", domain: "wallex.ir", note: "تتر · معادل دلار · تومان" };
-  try { const data = await requestJson("https://api.wallex.ir/v1/markets") as { result?: { symbols?: Record<string, { stats?: { lastPrice?: string } }> } }; const price = Number(data.result?.symbols?.USDTTMN?.stats?.lastPrice); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
+  try {
+    const data = await requestJson("https://api.wallex.ir/v1/markets", 20_000) as { result?: { symbols?: Record<string, { stats?: { lastPrice?: string } }> } };
+    const price = Number(data.result?.symbols?.USDTTMN?.stats?.lastPrice);
+    if (!Number.isFinite(price) || price <= 0) throw new Error();
+    return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
+  } catch { return unavailable(base); }
 }
 async function raastin(): Promise<Source> {
   const base = { id: "raastin", name: "راستین", url: "https://raastin.com/", domain: "raastin.com", note: "تتر · معادل دلار · تومان" };
