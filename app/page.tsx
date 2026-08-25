@@ -10,14 +10,14 @@ const fallback: PriceResponse = { gold: { averagePrice: null, sources: [
   { id: "talasea", name: "طلاسی", price: null, url: "https://talasea.ir/", status: "unavailable", updatedAt: null, domain: "talasea.ir" },
   { id: "melligold", name: "ملی‌گلد", price: null, url: "https://melligold.com/", status: "unavailable", updatedAt: null, domain: "melligold.com" },
   { id: "milli", name: "میلی", price: null, url: "https://milli.gold/", status: "unavailable", updatedAt: null, domain: "milli.gold" },
-  { id: "tgju", name: "طلاجو", price: null, url: "https://www.tgju.org/profile/geram18", status: "unavailable", updatedAt: null, domain: "tgju.org" },
+  { id: "tgju", name: "شبکه طلا و ارز", price: null, url: "https://www.tgju.org/profile/geram18", status: "unavailable", updatedAt: null, domain: "tgju.org" },
   { id: "iranjib", name: "ایران‌جیب", price: null, url: "https://www.iranjib.ir/showgroup/23/gold/", status: "unavailable", updatedAt: null, domain: "iranjib.ir" },
 ] }, dollar: { averagePrice: null, sources: [
   { id: "bitpin", name: "بیت‌پین", price: null, url: "https://bitpin.ir/", status: "unavailable", updatedAt: null, domain: "bitpin.ir" },
   { id: "tabdeal", name: "تبدیل", price: null, url: "https://tabdeal.org/live/currency", status: "unavailable", updatedAt: null, domain: "tabdeal.org" },
   { id: "nobitex", name: "نوبیتکس", price: null, url: "https://nobitex.ir/", status: "unavailable", updatedAt: null, domain: "nobitex.ir" },
   { id: "bit24", name: "بیت۲۴", price: null, url: "https://bit24.cash/", status: "unavailable", updatedAt: null, domain: "bit24.cash" },
-  { id: "tgju-dollar", name: "طلاجو", price: null, url: "https://www.tgju.org/profile/price_dollar_rl", status: "unavailable", updatedAt: null, domain: "tgju.org" },
+  { id: "tgju-dollar", name: "شبکه طلا و ارز", price: null, url: "https://www.tgju.org/profile/price_dollar_rl", status: "unavailable", updatedAt: null, domain: "tgju.org" },
 ] }, updatedAt: "", refreshAfterSeconds: REFRESH_SECONDS };
 function amount(value: number | null, unit: string) { return value === null || !Number.isFinite(value) ? "—" : `${new Intl.NumberFormat("fa-IR").format(Math.round(value))} ${unit}`; }
 function timestamp(value: string | null) { const date = value ? new Date(value) : null; return !date || Number.isNaN(date.getTime()) ? "نامشخص" : new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date); }
