@@ -53,34 +53,21 @@ async function raastin(): Promise<Source> {
 }
 export async function GET() {
   const encoder = new TextEncoder();
-  const refreshStartedAt = now();
   const sources = [
     ...[talasea, daric, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
     ...[bitpin, tabdeal, nobitex, wallex, raastin].map((load) => ({ market: "dollar" as const, load })),
   ];
-  let ended = false;
   const stream = new ReadableStream({
     start(controller) {
-      const send = (event: string, payload: unknown) => {
-        if (ended) return false;
-        try {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
-          return true;
-        } catch {
-          ended = true;
-          return false;
-        }
-      };
-      send("ready", { updatedAt: refreshStartedAt, refreshAfterSeconds: 20 });
+      const send = (event: string, payload: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+      send("ready", { updatedAt: now(), refreshAfterSeconds: 20 });
       const pending = sources.map(({ market: marketName, load }) => load()
-        .then((source) => send("source", { market: marketName, source, updatedAt: refreshStartedAt }))
+        .then((source) => send("source", { market: marketName, source, updatedAt: now() }))
         .catch(() => undefined));
       void Promise.allSettled(pending).then(() => {
-        if (send("complete", { updatedAt: refreshStartedAt, refreshAfterSeconds: 20 })) controller.close();
+        send("complete", { updatedAt: now(), refreshAfterSeconds: 20 });
+        controller.close();
       });
-    },
-    cancel() {
-      ended = true;
     },
   });
   return new Response(stream, { headers: { "Cache-Control": "no-store, max-age=0", "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive" } });

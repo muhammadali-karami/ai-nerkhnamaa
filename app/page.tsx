@@ -49,9 +49,6 @@ export default function Home() {
         for (const message of messages) {
           const event = message.match(/^event: (.+)$/m)?.[1]; const json = message.match(/^data: (.+)$/m)?.[1]; if (!event || !json) continue;
           const payload = JSON.parse(json) as { market?: "gold" | "dollar"; source?: PriceSource; updatedAt: string };
-          if (event === "ready") {
-            setData((current) => current ? { ...current, updatedAt: payload.updatedAt } : { ...fallback, updatedAt: payload.updatedAt });
-          }
           if (event === "source" && payload.market && payload.source) { setData((current) => updateSource(current, payload.market!, payload.source!, payload.updatedAt)); setError(false); }
           if (event === "complete") { setRemaining(REFRESH_SECONDS); }
         }
