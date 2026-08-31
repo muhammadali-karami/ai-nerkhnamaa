@@ -48,6 +48,7 @@ async function talasea(): Promise<Source> {
   } catch { return unavailable(base); }
 }
 function parseRial(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/[^0-9]/g, "")); }
+function parseDecimal(text: string) { return Number(text.replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/,/g, "").trim()); }
 function tgjuCurrentRate(html: string) {
   return html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/)?.[1] ?? "";
 }
@@ -60,6 +61,16 @@ async function tgju(): Promise<Source> {
     if (!Number.isFinite(price) || price <= 0) throw new Error();
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
+}
+async function goldOunce(): Promise<number | null> {
+  try {
+    const html = await requestText("https://www.tgju.org/profile/ons", 35_000);
+    const value = tgjuCurrentRate(html);
+    const price = parseDecimal(value);
+    return Number.isFinite(price) && price > 0 ? price : null;
+  } catch {
+    return null;
+  }
 }
 async function tgjuTether(): Promise<Source> {
   const base = { id: "tgju-tether", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "تتر · معادل دلار · تومان" };
@@ -123,8 +134,8 @@ export async function GET(request: Request) {
   const sources = requestedMarket === "gold"
     ? [talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load: async () => [await load()] }))
     : requestedMarket === "usdt"
-      ? [bitpin, tabdeal, nobitex, bit24, tgjuTether].map((load) => ({ market: "dollar" as const, load: async () => [await load()] }))
-      : [{ market: "dollar" as const, load: usdExchanges }];
+      ? [bitpin, tabdeal, nobitex, bit24, tgjuTether].map((load) => ({ market: "usdt" as const, load: async () => [await load()] }))
+      : [{ market: "usd" as const, load: usdExchanges }];
   const stream = new ReadableStream({
     start(controller) {
       const send = (event: string, payload: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
@@ -132,6 +143,9 @@ export async function GET(request: Request) {
       const pending = sources.map(({ market: marketName, load }) => load()
         .then((items) => items.forEach((source) => send("source", { market: marketName, source, updatedAt: now() })))
         .catch(() => undefined));
+      if (requestedMarket === "gold") {
+        pending.push(goldOunce().then((price) => send("gold-ounce", { goldOunce: price, updatedAt: now() })).catch(() => undefined));
+      }
       void Promise.allSettled(pending).then(() => {
         send("complete", { updatedAt: now(), refreshAfterSeconds: 20 });
         controller.close();
