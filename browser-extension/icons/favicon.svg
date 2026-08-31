@@ -1,0 +1,10 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<title>نرخ‌نما</title>
+<rect x="4" y="4" width="56" height="56" rx="19" fill="#24584D"/>
+<rect x="9" y="9" width="46" height="46" rx="15" stroke="#79A99C" stroke-opacity=".42" stroke-width="2"/>
+<path d="M17 42.5L27 32.5L34 37L47 23" stroke="#F3D58B" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M40.5 23H47V29.5" stroke="#F3D58B" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="17" cy="42.5" r="2.5" fill="#F3D58B"/>
+<circle cx="27" cy="32.5" r="2.5" fill="#F3D58B"/>
+<circle cx="34" cy="37" r="2.5" fill="#F3D58B"/>
+</svg>

@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "نرخ‌نما",
+  "version": "1.0.0",
+  "description": "نمایش سریع نرخ طلا، دلار آمریکا و تتر بدون باز کردن سایت.",
+  "permissions": ["storage"],
+  "action": {
+    "default_title": "نرخ‌نما",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icons/favicon.svg",
+    "32": "icons/favicon.svg",
+    "48": "icons/favicon.svg",
+    "128": "icons/favicon.svg"
+  },
+  "host_permissions": [
+    "https://www.tgju.org/*",
+    "https://platform.tgju.org/*",
+    "https://api.talasea.ir/*",
+    "https://melligold.com/*",
+    "https://milli.gold/*",
+    "https://www.iranjib.ir/*",
+    "https://api.bitpin.ir/*",
+    "https://api-web.tabdeal.org/*",
+    "https://apiv2.nobitex.ir/*",
+    "https://bit24.cash/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "nerkhnama@local"
+    }
+  }
+}
