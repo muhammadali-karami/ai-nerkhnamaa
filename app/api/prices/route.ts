@@ -1,4 +1,4 @@
-type Source = { id: string; name: string; url: string; domain: string; note: string; price: number | null; status: "live" | "unavailable"; updatedAt: string | null };
+type Source = { id: string; name: string; url: string; domain: string; logoUrl?: string; note: string; price: number | null; status: "live" | "unavailable"; updatedAt: string | null };
 const now = () => new Date().toISOString();
 
 async function requestJson(url: string, timeoutMs = 8_000) {
@@ -61,14 +61,35 @@ async function tgju(): Promise<Source> {
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
 }
-async function tgjuDollar(): Promise<Source> {
-  const base = { id: "tgju-dollar", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "نرخ فعلی دلار آمریکا · تومان" };
+async function tgjuTether(): Promise<Source> {
+  const base = { id: "tgju-tether", name: "شبکه طلا و ارز", url: "https://www.tgju.org/profile/price_dollar_rl", domain: "tgju.org", note: "تتر · معادل دلار · تومان" };
   try {
     const html = await requestText(base.url, 35_000);
     const price = parseRial(tgjuCurrentRate(html)) / 10;
     if (!Number.isFinite(price) || price <= 0) throw new Error();
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
+}
+async function usdExchanges(): Promise<Source[]> {
+  const pageUrl = "https://www.tgju.org/currency-exchange";
+  try {
+    const html = await requestText(pageUrl, 35_000);
+    const rows = (html.match(/<tr\b[\s\S]*?<\/tr>/g) ?? []).filter((row) => row.includes("exchange-title")).slice(0, 5);
+    if (rows.length !== 5) throw new Error("Exchange rows were not found");
+    return rows.map((row) => {
+      const exchange = row.match(/class="exchange-title" href="([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/);
+      const logoUrl = row.match(/<img src="([^"]+)"[^>]*alt="[^"]*"/);
+      const quoted = row.match(/td-item-usd[^>]*data-item-value="([^"]+)"/);
+      if (!exchange || !quoted) throw new Error("Exchange data was incomplete");
+      const price = Number(quoted[1].replace(/,/g, "")) / 10;
+      const href = exchange[1].replace(/^\/+/, "");
+      const name = exchange[2].replace(/\s+/g, " ").trim();
+      const base = { id: `usd-${href.split("/").slice(-1)[0]}`, name, url: `https://www.tgju.org/${href}`, domain: "tgju.org", ...(logoUrl?.[1] ? { logoUrl: logoUrl[1] } : {}), note: "فروش نقدی دلار آمریکا · تومان" };
+      return Number.isFinite(price) && price > 0 ? { ...base, price: Math.round(price), status: "live" as const, updatedAt: now() } : unavailable(base);
+    });
+  } catch {
+    return [];
+  }
 }
 async function iranjib(): Promise<Source> {
   const base = { id: "iranjib", name: "ایران‌جیب", url: "https://www.iranjib.ir/showgroup/23/gold/", domain: "iranjib.ir", note: "طلای ۱۸ عیار · تومان/گرم" };
@@ -79,7 +100,7 @@ async function bitpin(): Promise<Source> {
   try { const data = await requestJson("https://api.bitpin.ir/v1/mkt/markets/") as { results?: Array<{ code?: string; price?: string; order_book_info?: { price?: string; time?: string } }> }; const quote = data.results?.find((item) => item.code === "USDT_IRT"); const price = Number(quote?.order_book_info?.price ?? quote?.price); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: quote?.order_book_info?.time ?? now() }; } catch { return unavailable(base); }
 }
 async function tabdeal(): Promise<Source> {
-  const base = { id: "tabdeal", name: "تبدیل", url: "https://tabdeal.org/live/currency", domain: "tabdeal.org", note: "دلار آمریکا · تومان" };
+  const base = { id: "tabdeal", name: "تبدیل", url: "https://tabdeal.org/live/currency", domain: "tabdeal.org", note: "تتر · معادل دلار · تومان" };
   try { const data = await requestJson("https://api-web.tabdeal.org/plots/fiat-currency/converter/") as Array<{ symbol?: string; price_in_irt?: string; last_updated_at?: string }>; const quote = data.find((item) => item.symbol === "USD"); const price = Number(quote?.price_in_irt); if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: quote?.last_updated_at ?? now() }; } catch { return unavailable(base); }
 }
 async function nobitex(): Promise<Source> {
@@ -96,18 +117,20 @@ async function bit24(): Promise<Source> {
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
 }
-export async function GET() {
+export async function GET(request: Request) {
   const encoder = new TextEncoder();
-  const sources = [
-    ...[talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load })),
-    ...[bitpin, tabdeal, nobitex, bit24, tgjuDollar].map((load) => ({ market: "dollar" as const, load })),
-  ];
+  const requestedMarket = new URL(request.url).searchParams.get("market");
+  const sources = requestedMarket === "gold"
+    ? [talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load: async () => [await load()] }))
+    : requestedMarket === "usdt"
+      ? [bitpin, tabdeal, nobitex, bit24, tgjuTether].map((load) => ({ market: "dollar" as const, load: async () => [await load()] }))
+      : [{ market: "dollar" as const, load: usdExchanges }];
   const stream = new ReadableStream({
     start(controller) {
       const send = (event: string, payload: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
       send("ready", { updatedAt: now(), refreshAfterSeconds: 20 });
       const pending = sources.map(({ market: marketName, load }) => load()
-        .then((source) => send("source", { market: marketName, source, updatedAt: now() }))
+        .then((items) => items.forEach((source) => send("source", { market: marketName, source, updatedAt: now() })))
         .catch(() => undefined));
       void Promise.allSettled(pending).then(() => {
         send("complete", { updatedAt: now(), refreshAfterSeconds: 20 });
