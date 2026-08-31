@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type PriceSource = { id: string; name: string; price: number | null; previousPrice?: number | null; url: string; status: "live" | "unavailable"; updatedAt: string | null; domain?: string; logoUrl?: string; note?: string };
+type PriceSource = { id: string; name: string; price: number | null; url: string; status: "live" | "unavailable"; updatedAt: string | null; domain?: string; logoUrl?: string; note?: string };
 type Market = { averagePrice: number | null; sources: PriceSource[] };
 type PriceResponse = { gold: Market; usd: Market; usdt: Market; goldOunce: number | null; updatedAt: string; refreshAfterSeconds: number };
 type QuoteTab = "usd" | "usdt";
@@ -35,8 +35,7 @@ function averagePrice(sources: PriceSource[]) { const prices = sources.flatMap((
 function updateSource(current: PriceResponse | null, marketName: "gold" | QuoteTab, nextSource: PriceSource, updatedAt: string): PriceResponse {
   const base = current ?? fallback;
   const currentMarket = base[marketName];
-  const previous = currentMarket.sources.find((source) => source.id === nextSource.id)?.price ?? null;
-  const sources = currentMarket.sources.map((source) => source.id === nextSource.id ? { ...nextSource, previousPrice: previous } : source);
+  const sources = currentMarket.sources.map((source) => source.id === nextSource.id ? nextSource : source);
   return { ...base, [marketName]: { sources, averagePrice: averagePrice(sources) }, updatedAt };
 }
 function SourceLogo({ source }: { source: PriceSource }) { const [failed, setFailed] = useState(false); const domain = source.domain ?? new URL(source.url).hostname; const logoUrl = source.logoUrl ?? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`; return <span className="source-logo" aria-hidden="true">{!failed && <img src={logoUrl} alt="" onError={() => setFailed(true)} />}{failed && <b>{source.name.trim().slice(0, 1)}</b>}</span>; }
@@ -63,7 +62,7 @@ function MarketPanel({ market, title, titleEnglish, unit, tone, tabs, activeTab,
       return <article className="source-row" role="listitem" key={source.id}>
         <span className="source-rank" aria-label={`رتبه ${index + 1}`}>{index + 1}</span><SourceLogo source={source} />
         <div className="source-name"><h3>{source.name}</h3><span className={`source-status ${live ? "online" : "offline"}`}>{live ? "فعال" : "ناموجود"}</span></div>
-        <div className="source-quote"><p className={live ? "source-price" : "source-price unavailable"}>{live ? amount(source.price, unit) : "قیمت در دسترس نیست"}</p>{live && <p className="previous-price">قبلی: {amount(source.previousPrice ?? null, unit)}</p>}{bubble !== null && <p className={`gold-bubble ${bubble >= 0 ? "positive" : "negative"}`}>حباب: {new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 2, signDisplay: "always" }).format(bubble)}٪</p>}{source.note && !live && <p className="source-note">{source.note}</p>}</div>
+        <div className="source-quote"><p className={live ? "source-price" : "source-price unavailable"}>{live ? amount(source.price, unit) : "قیمت در دسترس نیست"}</p>{bubble !== null && <p className={`gold-bubble ${bubble >= 0 ? "positive" : "negative"}`}>حباب: {new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 2, signDisplay: "always" }).format(bubble)}٪</p>}{source.note && !live && <p className="source-note">{source.note}</p>}</div>
         <a href={source.url} target="_blank" rel="noreferrer" aria-label={`مشاهده منبع ${source.name}`}>↗</a>
       </article>;
     })}</div>
