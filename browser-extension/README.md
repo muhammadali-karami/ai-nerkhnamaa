@@ -16,4 +16,4 @@
 
 برای نصب دائمی Firefox، افزونه باید پیش از انتشار امضا شود.
 
-دو فایل آمادهٔ نصب هم در همین پوشه قرار دارند: `rate-nama-chrome.zip` و `rate-nama-firefox.zip`.
+دو فایل آمادهٔ نصب هم در همین پوشه قرار دارند: `nerkh-namaa-chrome.zip` و `nerkh-namaa-firefox.zip`.
