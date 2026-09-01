@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type PriceSource = { id: string; name: string; price: number | null; url: string; status: "live" | "unavailable"; updatedAt: string | null; domain?: string; logoUrl?: string; note?: string };
 type Market = { averagePrice: number | null; sources: PriceSource[] };
@@ -70,9 +70,14 @@ function MarketPanel({ market, title, titleEnglish, unit, tone, tabs, activeTab,
 }
 export default function Home() {
   const [data, setData] = useState<PriceResponse | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(false); const [remaining, setRemaining] = useState(REFRESH_SECONDS); const [theme, setTheme] = useState<"light" | "dark">("light"); const [activeTab, setActiveTab] = useState<QuoteTab>("usd");
+  const priceRequests = useRef<Partial<Record<"gold" | QuoteTab, AbortController>>>({});
   const fetchPrices = useCallback(async (market: "gold" | QuoteTab, signal?: AbortSignal) => {
+    priceRequests.current[market]?.abort();
+    const requestController = new AbortController();
+    priceRequests.current[market] = requestController;
+    const requestSignal = signal ? AbortSignal.any([signal, requestController.signal]) : requestController.signal;
     try {
-      const response = await fetch(`/api/prices?market=${market}`, { cache: "no-store", signal });
+      const response = await fetch(`/api/prices?market=${market}`, { cache: "no-store", signal: requestSignal });
       if (!response.ok || !response.body) throw new Error("Price service unavailable");
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
       while (true) {
@@ -87,7 +92,7 @@ export default function Home() {
           if (event === "complete") { setRemaining(REFRESH_SECONDS); }
         }
       }
-    } catch (cause) { if ((cause as Error).name !== "AbortError") setError(true); } finally { setLoading(false); }
+    } catch (cause) { if ((cause as Error).name !== "AbortError") setError(true); } finally { if (priceRequests.current[market] === requestController) { delete priceRequests.current[market]; setLoading(false); } }
   }, []);
   useEffect(() => { const saved = window.localStorage.getItem("talnama-theme"); if (saved === "dark" || saved === "light") setTheme(saved); else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark"); }, []);
   useEffect(() => { window.localStorage.setItem("talnama-theme", theme); }, [theme]);
@@ -95,6 +100,7 @@ export default function Home() {
   useEffect(() => { void fetchPrices("gold"); const interval = window.setInterval(() => void fetchPrices("gold"), REFRESH_SECONDS * 1000); return () => window.clearInterval(interval); }, [fetchPrices]);
   useEffect(() => { const interval = window.setInterval(() => void fetchPrices(activeTab), REFRESH_SECONDS * 1000); return () => window.clearInterval(interval); }, [activeTab, fetchPrices]);
   useEffect(() => { const interval = window.setInterval(() => { if (activeTab !== "usd") void fetchPrices("usd"); }, REFRESH_SECONDS * 1000); return () => window.clearInterval(interval); }, [activeTab, fetchPrices]);
+  useEffect(() => () => { Object.values(priceRequests.current).forEach((controller) => controller?.abort()); }, []);
   useEffect(() => { const ticker = window.setInterval(() => setRemaining((value) => value <= 1 ? REFRESH_SECONDS : value - 1), 1000); return () => window.clearInterval(ticker); }, []);
   const prices = data ?? fallback;
   const intrinsicGoldPrice = prices.goldOunce !== null && prices.usd.averagePrice !== null ? (prices.goldOunce * prices.usd.averagePrice / 31.1035) * 0.75 : null;
