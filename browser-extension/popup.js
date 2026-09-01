@@ -8,14 +8,25 @@ const parseRials = (value) => Number(String(value).replace(/[۰-۹]/g, (digit) =
 const average = (sources) => { const prices = sources.flatMap((source) => Number.isFinite(source.price) ? [source.price] : []); return prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : null; };
 const highest = (sources) => { const prices = sources.flatMap((source) => Number.isFinite(source.price) ? [source.price] : []); return prices.length ? Math.max(...prices) : null; };
 const normalizeDollarToman = (value) => { const price = Math.round(value); return price >= 10_000 && price < 100_000 ? price * 10 : price; };
+const usdExchanges = [
+  { name: "صرافی بانک ملی", path: "currency-exchange/30001/mex-exchange" },
+  { name: "صرافی آلتین", path: "currency-exchange/95182/altinexchange-exchange" },
+  { name: "صرافی اردکانی", path: "currency-exchange/97914/ardakaniexchange-exchange" },
+  { name: "صرافی بانک سرمایه", path: "currency-exchange/95180/ex-sa-exchange" },
+  { name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange" },
+];
 async function text(url, signal) { const response = await fetch(url, { signal }); if (!response.ok) throw new Error(); return response.text(); }
 async function json(url, signal) { const response = await fetch(url, { signal }); if (!response.ok) throw new Error(); return response.json(); }
 async function safe(name, load) { try { return { name, price: await load() }; } catch { return { name, price: null }; } }
 async function tgjuProfile(url, signal) { const html = await text(url, signal); const match = html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/); const price = parseRials(match?.[1] ?? ""); if (!price) throw new Error(); return price / 10; }
 async function usdSources(signal) {
   const html = await text("https://www.tgju.org/currency-exchange", signal);
-  const rows = [...html.matchAll(/<tr\b[\s\S]*?<\/tr>/g)].map((item) => item[0]).filter((row) => row.includes("exchange-title")).slice(0, 5);
-  return rows.map((row) => { const name = row.match(/class="exchange-title" href="[^"]+"[^>]*>\s*([^<]+?)\s*<\/a>/)?.[1].replace(/\s+/g, " ").trim() ?? "صرافی"; const value = row.match(/td-item-usd[^>]*data-item-value="([^"]+)"/)?.[1]; return { name, price: value ? normalizeDollarToman(parseRials(value) / 10) : null }; });
+  const rows = [...html.matchAll(/<tr\b[\s\S]*?<\/tr>/g)].map((item) => item[0]);
+  return usdExchanges.map((exchange) => {
+    const row = rows.find((item) => item.includes(`href="${exchange.path}"`));
+    const value = row?.match(/td-item-usd[^>]*data-item-value="([^"]+)"/)?.[1];
+    return { name: exchange.name, price: value ? normalizeDollarToman(parseRials(value) / 10) : null };
+  });
 }
 async function goldSources(signal) { return Promise.all([
   safe("طلاسی", async () => parseDigits((await json("https://api.talasea.ir/api/market/getGoldPrice", signal)).price) * 1000),

@@ -23,10 +23,10 @@ const tetherFallback: Market = { averagePrice: null, sources: [
 ] };
 const usdFallback: Market = { averagePrice: null, sources: [
   { id: "usd-mex-exchange", name: "صرافی بانک ملی", price: null, url: "https://www.tgju.org/currency-exchange/30001/mex-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/mex-exchange-1649663486.png" },
-  { id: "usd-arshinexchange-exchange", name: "صرافی آرشین", price: null, url: "https://www.tgju.org/currency-exchange/95200/arshinexchange-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/arshinexchange-1649761553.png" },
   { id: "usd-altinexchange-exchange", name: "صرافی آلتین", price: null, url: "https://www.tgju.org/currency-exchange/95182/altinexchange-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/altinexchange-1649662078.png" },
-  { id: "usd-sarafiiex-exchange", name: "صرافی آی‌اکس", price: null, url: "https://www.tgju.org/currency-exchange/95395/sarafiiex-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/sarafiiex-1662353895.png" },
   { id: "usd-ardakaniexchange-exchange", name: "صرافی اردکانی", price: null, url: "https://www.tgju.org/currency-exchange/97914/ardakaniexchange-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/ardakaniexchangecom-1749289666.png" },
+  { id: "usd-ex-sa-exchange", name: "صرافی بانک سرمایه", price: null, url: "https://www.tgju.org/currency-exchange/95180/ex-sa-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/ex-sa-1649664997.png" },
+  { id: "usd-sarafiroyal-exchange", name: "صرافی رویال", price: null, url: "https://www.tgju.org/currency-exchange/28402/sarafiroyal-exchange", status: "unavailable", updatedAt: null, domain: "tgju.org", logoUrl: "https://platform.tgju.org/files/images/sarafiroyal-1649673056.png" },
 ] };
 const fallback: PriceResponse = { gold: goldFallback, usd: usdFallback, usdt: tetherFallback, goldOunce: null, updatedAt: "", refreshAfterSeconds: REFRESH_SECONDS };
 function amount(value: number | null, unit: string) { return value === null || !Number.isFinite(value) ? "—" : `${new Intl.NumberFormat("fa-IR").format(Math.round(value))} ${unit}`; }

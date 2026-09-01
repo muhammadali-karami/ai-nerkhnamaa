@@ -13,7 +13,7 @@ test("server-renders the Nerkhnama dashboard and sharing metadata", async () => 
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<html lang="fa" dir="rtl">/);
-  assert.match(html, /<title>نرخ‌نما \| قیمت میانگین طلا و دلار<\/title>/);
+  assert.match(html, /<title>نرخ‌نما \| قیمت طلا و بالاترین نرخ دلار<\/title>/);
   assert.match(html, /طلا و دلار، در یک نگاه/);
   assert.match(html, /قیمت میانگین/);
   assert.match(html, /property="og:image" content="https:\/\/localhost:3000\/og.png"/);

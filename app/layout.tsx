@@ -13,8 +13,8 @@ export default async function RootLayout({
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
   const image = `${protocol}://${host}/og.png`;
-  const title = "نرخ‌نما | قیمت میانگین طلا و دلار";
-  const description = "پایش قیمت میانگین طلای ۱۸ عیار و دلار از منابع منتخب.";
+  const title = "نرخ‌نما | قیمت طلا و بالاترین نرخ دلار";
+  const description = "پایش قیمت میانگین طلای ۱۸ عیار و بالاترین نرخ دلار آمریکا از صرافی‌های منتخب.";
 
   return (
     <html lang="fa" dir="rtl">

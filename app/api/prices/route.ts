@@ -58,6 +58,13 @@ function normalizeDollarToman(value: number) {
   // rial-style scale; normalize them to the six-digit toman display scale.
   return price >= 10_000 && price < 100_000 ? price * 10 : price;
 }
+const usdExchanges = [
+  { id: "usd-mex-exchange", name: "صرافی بانک ملی", path: "currency-exchange/30001/mex-exchange", logoUrl: "https://platform.tgju.org/files/images/mex-exchange-1649663486.png" },
+  { id: "usd-altinexchange-exchange", name: "صرافی آلتین", path: "currency-exchange/95182/altinexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/altinexchange-1649662078.png" },
+  { id: "usd-ardakaniexchange-exchange", name: "صرافی اردکانی", path: "currency-exchange/97914/ardakaniexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/ardakaniexchangecom-1749289666.png" },
+  { id: "usd-ex-sa-exchange", name: "صرافی بانک سرمایه", path: "currency-exchange/95180/ex-sa-exchange", logoUrl: "https://platform.tgju.org/files/images/ex-sa-1649664997.png" },
+  { id: "usd-sarafiroyal-exchange", name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange", logoUrl: "https://platform.tgju.org/files/images/sarafiroyal-1649673056.png" },
+] as const;
 function tgjuCurrentRate(html: string) {
   return html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/)?.[1] ?? "";
 }
@@ -90,25 +97,23 @@ async function tgjuTether(signal: AbortSignal): Promise<Source> {
     return { ...base, price: Math.round(price), status: "live", updatedAt: now() };
   } catch { return unavailable(base); }
 }
-async function usdExchanges(signal: AbortSignal): Promise<Source[]> {
+async function loadUsdExchanges(signal: AbortSignal): Promise<Source[]> {
   const pageUrl = "https://www.tgju.org/currency-exchange";
   try {
     const html = await requestText(pageUrl, signal, 35_000);
-    const rows = (html.match(/<tr\b[\s\S]*?<\/tr>/g) ?? []).filter((row) => row.includes("exchange-title")).slice(0, 5);
-    if (rows.length !== 5) throw new Error("Exchange rows were not found");
-    return rows.map((row) => {
-      const exchange = row.match(/class="exchange-title" href="([^"]+)"[^>]*>\s*([^<]+?)\s*<\/a>/);
-      const logoUrl = row.match(/<img src="([^"]+)"[^>]*alt="[^"]*"/);
+    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/g) ?? [];
+    return usdExchanges.map((exchange) => {
+      const row = rows.find((item) => item.includes(`href="${exchange.path}"`));
+      if (!row) throw new Error(`Exchange row was not found: ${exchange.name}`);
       const quoted = row.match(/td-item-usd[^>]*data-item-value="([^"]+)"/);
-      if (!exchange || !quoted) throw new Error("Exchange data was incomplete");
+      if (!quoted) throw new Error(`Dollar price was not found: ${exchange.name}`);
       const price = normalizeDollarToman(Number(quoted[1].replace(/,/g, "")) / 10);
-      const href = exchange[1].replace(/^\/+/, "");
-      const name = exchange[2].replace(/\s+/g, " ").trim();
-      const base = { id: `usd-${href.split("/").slice(-1)[0]}`, name, url: `https://www.tgju.org/${href}`, domain: "tgju.org", ...(logoUrl?.[1] ? { logoUrl: logoUrl[1] } : {}), note: "فروش نقدی دلار آمریکا · تومان" };
+      const { path, ...details } = exchange;
+      const base = { ...details, url: `https://www.tgju.org/${path}`, domain: "tgju.org", note: "فروش نقدی دلار آمریکا · تومان" };
       return Number.isFinite(price) && price > 0 ? { ...base, price: Math.round(price), status: "live" as const, updatedAt: now() } : unavailable(base);
     });
   } catch {
-    return [];
+    return usdExchanges.map(({ path, ...exchange }) => unavailable({ ...exchange, url: `https://www.tgju.org/${path}`, domain: "tgju.org", note: "فروش نقدی دلار آمریکا · تومان" }));
   }
 }
 async function iranjib(signal: AbortSignal): Promise<Source> {
@@ -145,7 +150,7 @@ export async function GET(request: Request) {
     ? [talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load: async () => [await load(work.signal)] }))
     : requestedMarket === "usdt"
       ? [bitpin, tabdeal, nobitex, bit24, tgjuTether].map((load) => ({ market: "usdt" as const, load: async () => [await load(work.signal)] }))
-      : [{ market: "usd" as const, load: () => usdExchanges(work.signal) }];
+      : [{ market: "usd" as const, load: () => loadUsdExchanges(work.signal) }];
   const stream = new ReadableStream({
     start(controller) {
       let closed = false;
