@@ -62,7 +62,7 @@ const usdExchanges = [
   { id: "usd-mex-exchange", name: "صرافی بانک ملی", path: "currency-exchange/30001/mex-exchange", logoUrl: "https://platform.tgju.org/files/images/mex-exchange-1649663486.png" },
   { id: "usd-altinexchange-exchange", name: "صرافی آلتین", path: "currency-exchange/95182/altinexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/altinexchange-1649662078.png" },
   { id: "usd-ardakaniexchange-exchange", name: "صرافی اردکانی", path: "currency-exchange/97914/ardakaniexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/ardakaniexchangecom-1749289666.png" },
-  { id: "usd-ex-sa-exchange", name: "صرافی بانک سرمایه", path: "currency-exchange/95180/ex-sa-exchange", logoUrl: "https://platform.tgju.org/files/images/ex-sa-1649664997.png" },
+  { id: "usd-exchange-exchange", name: "صرافی امین ضراب", path: "currency-exchange/95194/exchange-exchange" },
   { id: "usd-sarafiroyal-exchange", name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange", logoUrl: "https://platform.tgju.org/files/images/sarafiroyal-1649673056.png" },
 ] as const;
 function tgjuCurrentRate(html: string) {

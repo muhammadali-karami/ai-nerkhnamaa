@@ -12,7 +12,7 @@ const usdExchanges = [
   { name: "صرافی بانک ملی", path: "currency-exchange/30001/mex-exchange" },
   { name: "صرافی آلتین", path: "currency-exchange/95182/altinexchange-exchange" },
   { name: "صرافی اردکانی", path: "currency-exchange/97914/ardakaniexchange-exchange" },
-  { name: "صرافی بانک سرمایه", path: "currency-exchange/95180/ex-sa-exchange" },
+  { name: "صرافی امین ضراب", path: "currency-exchange/95194/exchange-exchange" },
   { name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange" },
 ];
 async function text(url, signal) { const response = await fetch(url, { signal }); if (!response.ok) throw new Error(); return response.text(); }
