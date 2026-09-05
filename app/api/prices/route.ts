@@ -65,6 +65,13 @@ const usdExchanges = [
   { id: "usd-exchange-exchange", name: "صرافی امین ضراب", path: "currency-exchange/95194/exchange-exchange" },
   { id: "usd-sarafiroyal-exchange", name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange", logoUrl: "https://platform.tgju.org/files/images/sarafiroyal-1649673056.png" },
 ] as const;
+const coinTypes = [
+  { id: "coin-sekee", name: "سکه امامی", path: "profile/sekee", slug: "sekee" },
+  { id: "coin-sekeb", name: "سکه بهار آزادی", path: "profile/sekeb", slug: "sekeb" },
+  { id: "coin-nim", name: "نیم سکه", path: "profile/nim", slug: "nim" },
+  { id: "coin-rob", name: "ربع سکه", path: "profile/rob", slug: "rob" },
+  { id: "coin-gerami", name: "سکه گرمی", path: "profile/gerami", slug: "gerami" },
+] as const;
 function tgjuCurrentRate(html: string) {
   return html.match(/data-col="info\.last_trade\.PDrCotVal"[^>]*>\s*([^<\s]+)/)?.[1] ?? "";
 }
@@ -116,6 +123,25 @@ async function loadUsdExchanges(signal: AbortSignal): Promise<Source[]> {
     return usdExchanges.map(({ path, ...exchange }) => unavailable({ ...exchange, url: `https://www.tgju.org/${path}`, domain: "tgju.org", note: "فروش نقدی دلار آمریکا · تومان" }));
   }
 }
+async function loadCoins(signal: AbortSignal): Promise<Source[]> {
+  const pageUrl = "https://www.tgju.org/coin";
+  try {
+    const html = await requestText(pageUrl, signal, 35_000);
+    const rows = html.match(/<tr\b[\s\S]*?<\/tr>/g) ?? [];
+    return coinTypes.map((coin) => {
+      const row = rows.find((item) => item.includes(`data-market-row="${coin.slug}"`));
+      if (!row) throw new Error(`Coin row was not found: ${coin.name}`);
+      const quoted = row.match(/data-price="([^"]+)"/);
+      if (!quoted) throw new Error(`Coin price was not found: ${coin.name}`);
+      const price = parseRial(quoted[1]) / 10;
+      const { path, slug: _slug, ...details } = coin;
+      const base = { ...details, url: `https://www.tgju.org/${path}`, domain: "tgju.org", note: "قیمت زنده · تومان" };
+      return Number.isFinite(price) && price > 0 ? { ...base, price: Math.round(price), status: "live" as const, updatedAt: now() } : unavailable(base);
+    });
+  } catch {
+    return coinTypes.map(({ path, slug: _slug, ...coin }) => unavailable({ ...coin, url: `https://www.tgju.org/${path}`, domain: "tgju.org", note: "قیمت زنده · تومان" }));
+  }
+}
 async function iranjib(signal: AbortSignal): Promise<Source> {
   const base = { id: "iranjib", name: "ایران‌جیب", url: "https://www.iranjib.ir/showgroup/23/gold/", domain: "iranjib.ir", note: "طلای ۱۸ عیار · تومان/گرم" };
   try { const html = await requestText(base.url, signal); const match = html.match(/هر گرم طلای [^<]*<\/a><\/td>\s*<td[^>]*>\s*<span class="lastprice">([^<]+)/); const price = parseRial(match?.[1] ?? "") / 10; if (!Number.isFinite(price) || price <= 0) throw new Error(); return { ...base, price: Math.round(price), status: "live", updatedAt: now() }; } catch { return unavailable(base); }
@@ -148,6 +174,8 @@ export async function GET(request: Request) {
   const requestedMarket = new URL(request.url).searchParams.get("market");
   const sources = requestedMarket === "gold"
     ? [talasea, melligold, milli, tgju, iranjib].map((load) => ({ market: "gold" as const, load: async () => [await load(work.signal)] }))
+    : requestedMarket === "coin"
+      ? [{ market: "coin" as const, load: () => loadCoins(work.signal) }]
     : requestedMarket === "usdt"
       ? [bitpin, tabdeal, nobitex, bit24, tgjuTether].map((load) => ({ market: "usdt" as const, load: async () => [await load(work.signal)] }))
       : [{ market: "usd" as const, load: () => loadUsdExchanges(work.signal) }];
