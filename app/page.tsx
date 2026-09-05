@@ -59,8 +59,8 @@ function MarketPanel({ market, title, titleEnglish, unit, tone, summaryLabel = "
     </div>
   ) : goldTabs ? (
     <div className="quote-tabs quote-tabs-gold" role="tablist" aria-label="انتخاب بازار طلا و سکه">
-      <button id={`${tone}-title`} type="button" role="tab" aria-selected={activeGoldTab === "gold"} className={activeGoldTab === "gold" ? "active" : ""} onClick={() => onGoldTabChange?.("gold")}>طلای ۱۸ عیار</button>
-      <button type="button" role="tab" aria-selected={activeGoldTab === "coin"} className={activeGoldTab === "coin" ? "active" : ""} onClick={() => onGoldTabChange?.("coin")}>سکه</button>
+      <button id={`${tone}-title`} type="button" role="tab" aria-selected={activeGoldTab === "gold"} className={activeGoldTab === "gold" ? "active" : ""} style={activeGoldTab === "gold" ? { background: "#a87419", color: "#fff", boxShadow: "0 3px 7px #8d5a1733" } : undefined} onClick={() => onGoldTabChange?.("gold")}>طلای ۱۸ عیار</button>
+      <button type="button" role="tab" aria-selected={activeGoldTab === "coin"} className={activeGoldTab === "coin" ? "active" : ""} style={activeGoldTab === "coin" ? { background: "#a87419", color: "#fff", boxShadow: "0 3px 7px #8d5a1733" } : undefined} onClick={() => onGoldTabChange?.("coin")}>سکه</button>
     </div>
   ) : (
     <div className="quote-tabs quote-tabs-gold" role="tablist" aria-label="نوع طلا">
