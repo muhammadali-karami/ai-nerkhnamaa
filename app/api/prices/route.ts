@@ -62,7 +62,7 @@ const usdExchanges = [
   { id: "usd-mex-exchange", name: "صرافی بانک ملی", path: "currency-exchange/30001/mex-exchange", logoUrl: "https://platform.tgju.org/files/images/mex-exchange-1649663486.png" },
   { id: "usd-altinexchange-exchange", name: "صرافی آلتین", path: "currency-exchange/95182/altinexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/altinexchange-1649662078.png" },
   { id: "usd-ardakaniexchange-exchange", name: "صرافی اردکانی", path: "currency-exchange/97914/ardakaniexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/ardakaniexchangecom-1749289666.png" },
-  { id: "usd-exchange-exchange", name: "صرافی امین ضراب", path: "currency-exchange/95194/exchange-exchange" },
+  { id: "usd-shahrexchange-exchange", name: "صرافی بانک شهر", path: "currency-exchange/34509/shahrexchange-exchange", logoUrl: "https://platform.tgju.org/files/images/shahrexchange-1649663343.png" },
   { id: "usd-sarafiroyal-exchange", name: "صرافی رویال", path: "currency-exchange/28402/sarafiroyal-exchange", logoUrl: "https://platform.tgju.org/files/images/sarafiroyal-1649673056.png" },
 ] as const;
 const coinTypes = [
